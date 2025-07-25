@@ -1,0 +1,181 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.52.1';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    // Get API key from environment
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiApiKey) {
+      throw new Error('GEMINI_API_KEY not configured');
+    }
+
+    // Parse and validate request body
+    const requestData = await req.json();
+    
+    // Input validation and sanitization
+    const ingredients = Array.isArray(requestData.ingredients) 
+      ? requestData.ingredients.filter(item => typeof item === 'string' && item.trim().length > 0).slice(0, 20)
+      : [];
+      
+    const dietary_restrictions = Array.isArray(requestData.dietary_restrictions)
+      ? requestData.dietary_restrictions.filter(item => typeof item === 'string' && item.trim().length > 0).slice(0, 10)
+      : [];
+      
+    const allergens = Array.isArray(requestData.allergens)
+      ? requestData.allergens.filter(item => typeof item === 'string' && item.trim().length > 0).slice(0, 10)
+      : [];
+
+    if (ingredients.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'At least one valid ingredient is required' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // Additional validation for excessive data
+    const totalInputLength = ingredients.join('').length + dietary_restrictions.join('').length + allergens.join('').length;
+    if (totalInputLength > 1000) {
+      return new Response(
+        JSON.stringify({ error: 'Input data too large' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // Create prompt for Gemini
+    const prompt = `Tu es un chef cuisinier expert. Génère exactement 3 recettes différentes basées sur ces critères :
+
+Ingrédients disponibles : ${ingredients.join(', ')}
+${dietary_restrictions.length > 0 ? `Régimes alimentaires : ${dietary_restrictions.join(', ')}` : ''}
+${allergens.length > 0 ? `Allergènes à éviter : ${allergens.join(', ')}` : ''}
+
+Pour chaque recette, fournis EXACTEMENT le format JSON suivant (sans texte additionnel) :
+
+{
+  "recipes": [
+    {
+      "title": "nom de la recette",
+      "description": "description courte et appétissante",
+      "ingredients": ["ingrédient 1 avec quantité", "ingrédient 2 avec quantité", "etc"],
+      "instructions": "instructions détaillées étape par étape pour préparer la recette",
+      "prep_time": nombre_minutes_preparation,
+      "cook_time": nombre_minutes_cuisson,
+      "servings": nombre_portions,
+      "difficulty": "easy" ou "medium" ou "hard"
+    }
+  ]
+}
+
+IMPORTANT : 
+- Utilise au maximum les ingrédients fournis
+- Respecte strictement les régimes alimentaires mentionnés
+- Évite complètement les allergènes listés
+- Fournis des instructions détaillées et pratiques
+- Assure-toi que les temps sont réalistes
+- Réponds UNIQUEMENT avec le JSON valide, rien d'autre`;
+
+    // Call Gemini API
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 2048,
+        }
+      }),
+    });
+
+    if (!response.ok) {
+      // Log error without exposing sensitive details
+      console.error('Gemini API request failed with status:', response.status);
+      throw new Error('External API service temporarily unavailable');
+    }
+
+    const data = await response.json();
+
+    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+      throw new Error('Invalid response from AI service');
+    }
+
+    const generatedText = data.candidates[0].content.parts[0].text;
+
+    // Parse the JSON response from Gemini
+    let parsedResponse;
+    try {
+      // Extract JSON from response (in case there's extra text)
+      const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
+      const jsonText = jsonMatch ? jsonMatch[0] : generatedText;
+      parsedResponse = JSON.parse(jsonText);
+    } catch (parseError) {
+      console.error('Failed to parse AI response');
+      throw new Error('Failed to parse recipe data from AI response');
+    }
+
+    if (!parsedResponse.recipes || !Array.isArray(parsedResponse.recipes)) {
+      throw new Error('Invalid recipe format from AI');
+    }
+
+    // Validate and enhance recipes
+    const recipes = parsedResponse.recipes.slice(0, 3).map((recipe: any) => ({
+      id: crypto.randomUUID(),
+      title: recipe.title || 'Recette sans nom',
+      description: recipe.description || 'Délicieuse recette',
+      ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : [],
+      instructions: recipe.instructions || 'Instructions non disponibles',
+      dietary_restrictions: dietary_restrictions || [],
+      allergens: allergens || [],
+      prep_time: Number(recipe.prep_time) || 15,
+      cook_time: Number(recipe.cook_time) || 30,
+      servings: Number(recipe.servings) || 4,
+      difficulty: ['easy', 'medium', 'hard'].includes(recipe.difficulty) ? recipe.difficulty : 'medium'
+    }));
+
+    return new Response(
+      JSON.stringify({ recipes }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
+
+  } catch (error) {
+    // Log error without exposing sensitive details
+    console.error('Recipe generation failed:', error.message);
+    return new Response(
+      JSON.stringify({ error: 'Unable to generate recipes at this time. Please try again later.' }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
+  }
+});
