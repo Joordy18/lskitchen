@@ -6,7 +6,7 @@ import { Providers } from './providers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'CuisineIA - Recettes générées par IA',
+  title: 'LS Kitchen - Recettes générées par IA',
   description: 'Découvrez des recettes personnalisées générées par intelligence artificielle en fonction de vos ingrédients, régimes alimentaires et préférences.',
 }
 

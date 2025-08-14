@@ -38,22 +38,6 @@ function ProfileContent() {
   const [loading, setLoading] = useState(true);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      fetchProfile();
-      fetchStats();
-    }
-  }, [user, fetchProfile, fetchStats]);
-
-  useEffect(() => {
-    // Cleanup preview URL when component unmounts or changes
-    return () => {
-      if (previewUrl && typeof window !== 'undefined') {
-        URL.revokeObjectURL(previewUrl);
-      }
-    };
-  }, [previewUrl]);
-
   const fetchProfile = useCallback(async () => {
     try {
       const { data, error } = await supabase
@@ -111,6 +95,21 @@ function ProfileContent() {
       console.error('Erreur lors du chargement des statistiques:', error);
     }
   }, [user?.id]);
+  
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+      fetchStats();
+    }
+  }, [user, fetchProfile, fetchStats ]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl && typeof window !== 'undefined') {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   const analyzeUserCuisinePreferences = (recipes: any[]) => {
     const cuisineKeywords = {
@@ -148,7 +147,6 @@ function ProfileContent() {
   const updateBio = async () => {
     if (!user) return;
 
-    // Validate and sanitize bio
     const validation = validateTextInput(bio, 0, 500);
     if (!validation.isValid) {
       toast({
@@ -164,13 +162,14 @@ function ProfileContent() {
     try {
       const { error } = await supabase
         .from('profiles')
-        .upsert({
-          user_id: user.id,
+        .update({
           bio: sanitizedBio,
+          avatar_url: profile?.avatar_url,
           updated_at: new Date().toISOString()
-        });
+        }).eq('user_id', user?.id);
 
       if (error) {
+        console.error("Erreur Supabase lors de l'upsert de la bio:", error); // Log the error
         toast({
           title: "Erreur",
           description: "Impossible de mettre à jour la bio",
@@ -184,6 +183,7 @@ function ProfileContent() {
         await fetchProfile();
       }
     } catch (error) {
+      console.error("Erreur inattendue lors de la mise à jour de la bio:", error);
       toast({
         title: "Erreur",
         description: "Une erreur inattendue s'est produite",
@@ -245,6 +245,7 @@ function ProfileContent() {
         });
 
       if (uploadError) {
+        console.error("Erreur Supabase lors du téléversement de l'avatar:", uploadError);
         // If bucket doesn't exist, we'll just save the file as base64 in the database for now
         console.warn('Storage upload failed, using fallback method:', uploadError);
         
@@ -262,6 +263,7 @@ function ProfileContent() {
             });
 
           if (updateError) {
+            console.error("Erreur Supabase lors de la mise à jour du profil avec l'avatar en base64:", updateError);
             throw updateError;
           }
 
@@ -281,15 +283,24 @@ function ProfileContent() {
         .from('avatars')
         .getPublicUrl(filePath);
 
+      console.log('Avatar public URL:', data.publicUrl);
+
+      if (!data.publicUrl) {
+        throw new Error("Impossible d'obtenir l'URL publique de l'avatar");
+      }
+
       const { error: updateError } = await supabase
         .from('profiles')
         .upsert({
           user_id: user?.id,
           avatar_url: data.publicUrl,
           updated_at: new Date().toISOString()
-        });
+        },
+      { onConflict: 'user_id' }
+    );
 
       if (updateError) {
+        console.error("Erreur Supabase lors de la mise à jour de l'URL de l'avatar:", updateError);
         throw updateError;
       }
 
@@ -301,6 +312,7 @@ function ProfileContent() {
       
       await fetchProfile();
     } catch (error: any) {
+      console.error("Erreur lors du téléversement de l'avatar:", error);
       setPreviewUrl(null);
       toast({
         title: "Erreur",
