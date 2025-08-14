@@ -7,9 +7,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { ChefHat, Search, History, User, LogOut } from 'lucide-react';
 
 export const Navbar = () => {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const pathname = usePathname();
-
+  
   const navItems = [
     { path: '/', label: 'Accueil', icon: ChefHat },
     { path: '/search', label: 'Recherche', icon: Search },
@@ -27,8 +27,8 @@ export const Navbar = () => {
     <nav className="bg-card border-b border-border px-6 py-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <Link href="/" className="flex items-center space-x-2">
-          <ChefHat className="h-8 w-8 text-primary" />
-          <span className="text-2xl font-bold text-primary">CuisineIA</span>
+        <ChefHat className="h-8 w-8 text-primary" />
+          <span className="text-2xl font-bold text-primary">LS Kitchen</span>
         </Link>
 
         <div className="flex items-center space-x-6">
@@ -46,16 +46,26 @@ export const Navbar = () => {
               <span className="hidden md:inline">{label}</span>
             </Link>
           ))}
-          
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleSignOut}
-            className="flex items-center space-x-2"
-          >
-            <LogOut className="h-4 w-4" />
-            <span className="hidden md:inline">Déconnexion</span>
-          </Button>
+
+          {user ? (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleSignOut}
+              className="flex items-center space-x-2"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden md:inline">Déconnexion</span>
+            </Button>
+          ) : (
+            
+              <Button variant="outline" size="sm" className="flex items-center space-x-2">
+                <Link href="/auth">
+                <LogOut className="h-4 w-4" />
+                <span className="hidden md:inline">Connexion</span>
+                </Link>
+            </Button>
+          )}
         </div>
       </div>
     </nav>

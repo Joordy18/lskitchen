@@ -41,7 +41,7 @@ export default function Home() {
         <div className="max-w-4xl mx-auto text-center">
           <ChefHat className="h-20 w-20 text-primary mx-auto mb-6" />
           <h1 className="text-5xl font-bold text-foreground mb-6">
-            Bienvenue sur <span className="text-primary">CuisineIA</span>
+            Bienvenue sur <span className="text-primary">LS Kitchen</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             Découvrez des recettes personnalisées générées par intelligence artificielle 
@@ -62,7 +62,7 @@ export default function Home() {
       <section className="py-16 px-6 bg-muted/30">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-center text-foreground mb-12">
-            Pourquoi choisir CuisineIA ?
+            Pourquoi choisir LS Kitchen ?
           </h2>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {features.map((feature, index) => (

@@ -12,6 +12,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 
+import { FunctionsHttpError } from '@supabase/supabase-js'
+
+const { data, error } = await supabase.functions.invoke('...')
+
+if (error && error instanceof FunctionsHttpError) {
+  const errorMessage = await error.context.json()
+  console.log('Function returned an error', errorMessage)
+}
+
 interface Recipe {
   id: string;
   title: string;
@@ -211,28 +220,31 @@ function RecipeDetailContent() {
             </Card>
 
             {/* Instructions */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl">Instructions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="prose prose-sm max-w-none">
-                  {recipe.instructions.split('\n').map((step, index) => {
-                    if (step.trim() === '') return null;
-                    return (
-                      <div key={index} className="mb-4">
-                        <div className="flex items-start space-x-3">
-                          <span className="flex items-center justify-center w-6 h-6 bg-primary text-primary-foreground text-xs font-bold rounded-full flex-shrink-0 mt-0.5">
-                            {index + 1}
-                          </span>
-                          <p className="text-sm leading-relaxed">{step.trim()}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-xl">Instructions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="prose prose-sm max-w-none">
+                    {recipe.instructions
+                      .split(/\s*(?=\d+\.\s)/)
+                      .filter(step => step.trim() !== '')
+                      .map((step, index) => {
+                        const cleanedStep = step.replace(/^\d+\.\s*/, '');
+                        return (
+                          <div key={index} className="mb-4">
+                            <div className="flex items-start space-x-3">
+                              <span className="flex items-center justify-center w-6 h-6 bg-primary text-primary-foreground text-xs font-bold rounded-full flex-shrink-0 mt-0.5">
+                                {index + 1}
+                              </span>
+                              <p className="text-sm leading-relaxed">{cleanedStep}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </CardContent>
+              </Card>
           </div>
 
           {/* Actions */}
