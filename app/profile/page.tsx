@@ -296,7 +296,7 @@ function ProfileContent() {
           avatar_url: data.publicUrl,
           updated_at: new Date().toISOString()
         },
-      { onConflict: 'user_id' }
+        { onConflict: 'user_id' }
     );
 
       if (updateError) {
