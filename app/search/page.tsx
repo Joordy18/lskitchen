@@ -32,7 +32,6 @@ function SearchContent() {
   const addIngredient = () => {
     const trimmed = newIngredient.trim();
     
-    // Validate and sanitize ingredient input
     const validation = validateTextInput(trimmed, 1, 50);
     if (!validation.isValid) {
       toast({

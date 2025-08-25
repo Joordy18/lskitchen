@@ -12,14 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 
-import { FunctionsHttpError } from '@supabase/supabase-js'
 
-const { data, error } = await supabase.functions.invoke('...')
-
-if (error && error instanceof FunctionsHttpError) {
-  const errorMessage = await error.context.json()
-  console.log('Function returned an error', errorMessage)
-}
 
 interface Recipe {
   id: string;
@@ -32,6 +25,7 @@ interface Recipe {
   prep_time: number;
   cook_time: number;
   servings: number;
+  calories: number;
   difficulty: 'easy' | 'medium' | 'hard';
 }
 
@@ -114,7 +108,7 @@ function RecipeDetailContent() {
         <Navbar />
         <div className="max-w-4xl mx-auto px-6 py-8 text-center">
           <h1 className="text-2xl font-bold text-foreground mb-4">Recette introuvable</h1>
-          <Button onClick={() => router.push('/search')}>
+          <Button onClick={() => router.push('/results')}>
             Retourner à la recherche
           </Button>
         </div>
@@ -129,7 +123,7 @@ function RecipeDetailContent() {
       <div className="max-w-4xl mx-auto px-6 py-8">
         <Button 
           variant="ghost" 
-          onClick={() => router.back()}
+          onClick={() => router.push('/history')}
           className="mb-6 flex items-center space-x-2"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -168,6 +162,10 @@ function RecipeDetailContent() {
                 <div className="flex items-center space-x-2">
                   <Users className="h-5 w-5 text-muted-foreground" />
                   <span className="text-sm">{recipe.servings} personnes</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {/* <Users className="h-5 w-5 text-muted-foreground" /> */}
+                  <span className="text-sm">{recipe.calories} kcal</span>
                 </div>
                 <Badge className={getDifficultyColor(recipe.difficulty)}>
                   {getDifficultyText(recipe.difficulty)}

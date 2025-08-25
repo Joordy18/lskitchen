@@ -24,6 +24,7 @@ interface Recipe {
   prep_time: number;
   cook_time: number;
   servings: number;
+  calories: number;
   difficulty: 'easy' | 'medium' | 'hard';
 }
 
@@ -125,7 +126,8 @@ function ResultsContent() {
             cook_time: recipe.cook_time,
             servings: recipe.servings,
             difficulty: recipe.difficulty,
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            calories: recipe.calories
           });
 
         if (error) {
@@ -270,6 +272,10 @@ function ResultsContent() {
                     <div className="flex items-center gap-1">
                       <Users className="h-4 w-4" />
                       {recipe.servings} pers.
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {/* <Users className="h-4 w-4" /> */}
+                      {recipe.calories} kcal.
                     </div>
                   </div>
                   

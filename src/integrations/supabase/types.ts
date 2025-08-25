@@ -57,6 +57,7 @@ export type Database = {
           instructions: string
           prep_time: number | null
           servings: number | null
+          calories: number | null
           title: string
           updated_at: string
           user_id: string
@@ -73,6 +74,7 @@ export type Database = {
           instructions: string
           prep_time?: number | null
           servings?: number | null
+          calories?: number | null
           title: string
           updated_at?: string
           user_id: string
@@ -89,6 +91,7 @@ export type Database = {
           instructions?: string
           prep_time?: number | null
           servings?: number | null
+          calories?: number |null
           title?: string
           updated_at?: string
           user_id?: string

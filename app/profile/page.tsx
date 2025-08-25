@@ -81,8 +81,6 @@ function ProfileContent() {
 
       const allIngredients = recipes?.flatMap(recipe => recipe.ingredients || []) || [];
       const uniqueIngredients = new Set(allIngredients);
-
-      // Analyser les préférences culinaires basées sur les ingrédients et titres
       const favoritesCuisines = analyzeUserCuisinePreferences(recipes || []);
 
       setStats({
@@ -169,7 +167,7 @@ function ProfileContent() {
         }).eq('user_id', user?.id);
 
       if (error) {
-        console.error("Erreur Supabase lors de l'upsert de la bio:", error); // Log the error
+        console.error("Erreur Supabase lors de l'upsert de la bio:", error);
         toast({
           title: "Erreur",
           description: "Impossible de mettre à jour la bio",
@@ -195,7 +193,6 @@ function ProfileContent() {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && typeof window !== 'undefined') {
-      // Validate file type and size
       if (!file.type.startsWith('image/')) {
         toast({
           title: "Erreur",
@@ -214,11 +211,8 @@ function ProfileContent() {
         return;
       }
 
-      // Create preview URL
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
-      
-      // Upload immediately
       uploadAvatar(file);
     }
   };
@@ -246,10 +240,8 @@ function ProfileContent() {
 
       if (uploadError) {
         console.error("Erreur Supabase lors du téléversement de l'avatar:", uploadError);
-        // If bucket doesn't exist, we'll just save the file as base64 in the database for now
         console.warn('Storage upload failed, using fallback method:', uploadError);
         
-        // Convert to base64
         const reader = new FileReader();
         reader.onload = async (e) => {
           const base64Data = e.target?.result as string;

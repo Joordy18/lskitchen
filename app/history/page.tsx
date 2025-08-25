@@ -23,6 +23,7 @@ interface Recipe {
   prep_time: number;
   cook_time: number;
   servings: number;
+  calories: number;
   difficulty: 'easy' | 'medium' | 'hard';
   created_at: string;
 }
@@ -198,6 +199,10 @@ function HistoryContent() {
                     <div className="flex items-center gap-1">
                       <Users className="h-4 w-4" />
                       {recipe.servings} pers.
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {/* <Users className="h-4 w-4" /> */}
+                      {recipe.calories} kcal.
                     </div>
                   </div>
                   

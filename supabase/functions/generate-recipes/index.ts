@@ -8,22 +8,18 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Get API key from environment
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
     if (!geminiApiKey) {
       throw new Error('GEMINI_API_KEY not configured');
     }
 
-    // Parse and validate request body
     const requestData = await req.json();
     
-    // Input validation and sanitization
     const ingredients = Array.isArray(requestData.ingredients) 
       ? requestData.ingredients.filter(item => typeof item === 'string' && item.trim().length > 0).slice(0, 20)
       : [];
@@ -46,7 +42,6 @@ serve(async (req) => {
       );
     }
 
-    // Additional validation for excessive data
     const totalInputLength = ingredients.join('').length + dietary_restrictions.join('').length + allergens.join('').length;
     if (totalInputLength > 1000) {
       return new Response(
@@ -55,10 +50,10 @@ serve(async (req) => {
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
-      );
+      );  
     }
 
-    // Create prompt for Gemini
+    
     const prompt = `Tu es un chef cuisinier expert. Génère exactement 3 recettes différentes basées sur ces critères :
 
 Ingrédients disponibles : ${ingredients.join(', ')}
@@ -76,6 +71,7 @@ Pour chaque recette, fournis EXACTEMENT le format JSON suivant (sans texte addit
       "instructions": "instructions détaillées étape par étape pour préparer la recette",
       "prep_time": nombre_minutes_preparation,
       "cook_time": nombre_minutes_cuisson,
+      "calories": nombre_calories,
       "servings": nombre_portions,
       "difficulty": "easy" ou "medium" ou "hard"
     }
@@ -90,7 +86,7 @@ IMPORTANT :
 - Assure-toi que les temps sont réalistes
 - Réponds UNIQUEMENT avec le JSON valide, rien d'autre`;
 
-    // Call Gemini API
+
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
@@ -116,7 +112,6 @@ IMPORTANT :
     });
 
     if (!response.ok) {
-      // Log error without exposing sensitive details
       console.error('Gemini API request failed with status:', response.status);
       throw new Error('External API service temporarily unavailable');
     }
@@ -129,10 +124,8 @@ IMPORTANT :
 
     const generatedText = data.candidates[0].content.parts[0].text;
 
-    // Parse the JSON response from Gemini
     let parsedResponse;
     try {
-      // Extract JSON from response (in case there's extra text)
       const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
       const jsonText = jsonMatch ? jsonMatch[0] : generatedText;
       parsedResponse = JSON.parse(jsonText);
@@ -145,7 +138,6 @@ IMPORTANT :
       throw new Error('Invalid recipe format from AI');
     }
 
-    // Validate and enhance recipes
     const recipes = parsedResponse.recipes.slice(0, 3).map((recipe: any) => ({
       id: crypto.randomUUID(),
       title: recipe.title || 'Recette sans nom',
@@ -157,6 +149,7 @@ IMPORTANT :
       prep_time: Number(recipe.prep_time) || 15,
       cook_time: Number(recipe.cook_time) || 30,
       servings: Number(recipe.servings) || 4,
+      calories: Number(recipe.calories) || 500,
       difficulty: ['easy', 'medium', 'hard'].includes(recipe.difficulty) ? recipe.difficulty : 'medium'
     }));
 
@@ -168,7 +161,6 @@ IMPORTANT :
     );
 
   } catch (error) {
-    // Log error without exposing sensitive details
     console.error('Recipe generation failed:', error.message);
     return new Response(
       JSON.stringify({ error: 'Unable to generate recipes at this time. Please try again later.' }),

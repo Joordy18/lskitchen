@@ -2011,10 +2011,6 @@ video {
   animation-timing-function: linear;
 }
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 .file\:border-0::file-selector-button {
   border-width: 0px;
 }

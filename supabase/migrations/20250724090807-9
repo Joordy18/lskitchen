@@ -41,6 +41,7 @@ CREATE TABLE public.recipes (
   prep_time INTEGER,
   cook_time INTEGER,
   servings INTEGER,
+  calories INTEGER,
   difficulty TEXT CHECK (difficulty IN ('easy', 'medium', 'hard')),
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
