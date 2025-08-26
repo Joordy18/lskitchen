@@ -129,10 +129,9 @@ Pour chaque recette, fournis EXACTEMENT le format JSON suivant (sans texte addit
       "instructions": "instructions détaillées étape par étape pour préparer la recette",
       "prep_time": nombre_minutes_preparation,
       "cook_time": nombre_minutes_cuisson,
-      "calories": nombre_calories,
       "servings": nombre_portions,
       "difficulty": "easy" ou "medium" ou "hard",
-      "image_url": "URL d'une image libre sur internet illustrant la recette (recherche par nom de recette)"
+      "calories": nombre_calories,
     }
   ]
 }
@@ -144,7 +143,11 @@ IMPORTANT :
 - Fournis des instructions détaillées et pratiques
 - Assure-toi que les temps sont réalistes
 - Pour chaque recette, recherche une image libre sur internet correspondant au nom de la recette et fournis son URL dans le champ image_url
-- Réponds UNIQUEMENT avec le JSON valide, rien d'autre`;
+- Réponds UNIQUEMENT avec le JSON valide, rien d'autre
+- Assure toi que chaque recette contient obligatoirement tous les champs demandés
+- Pour le champ image_url fournis une URL valide d'une image libre de droit trouvée sur internet`;
+
+// "image_url": "URL d'une image libre sur internet illustrant la recette (recherche par nom de recette)"
 
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
@@ -209,9 +212,9 @@ IMPORTANT :
       prep_time: Number(recipe.prep_time) || 15,
       cook_time: Number(recipe.cook_time) || 30,
       servings: Number(recipe.servings) || 4,
-      calories: Number(recipe.calories) || 500,
       difficulty: ['easy', 'medium', 'hard'].includes(recipe.difficulty) ? recipe.difficulty : 'medium',
-      image_url: typeof recipe.image_url === 'string' ? recipe.image_url : ''
+      calories: Number(recipe.calories) || 500,
+      // image_url: typeof recipe.image_url === 'string' ? recipe.image_url : ''
     }));
 
     credits = credits - 1;
@@ -224,31 +227,6 @@ IMPORTANT :
     console.log('Update credits result:', { updateData, updateError });
     if (updateError) {
       console.error('Failed to update credits:', updateError.message);
-    }
-
-    for (const recipe of recipes) {
-      const { error: insertError } = await supabase
-        .from('recipes')
-        .insert({
-          id: recipe.id,
-          user_id: user.id,
-          title: recipe.title,
-          description: recipe.description,
-          ingredients: recipe.ingredients,
-          instructions: recipe.instructions,
-          dietary_restrictions: recipe.dietary_restrictions,
-          allergens: recipe.allergens,
-          prep_time: recipe.prep_time,
-          cook_time: recipe.cook_time,
-          servings: recipe.servings,
-          calories: recipe.calories,
-          difficulty: recipe.difficulty,
-          image_url: recipe.image_url,
-          created_at: new Date().toISOString()
-        });
-      if (insertError) {
-        console.error('Failed to insert recipe:', recipe.title, insertError.message);
-      }
     }
 
     return new Response(
