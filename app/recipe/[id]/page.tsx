@@ -26,7 +26,8 @@ interface Recipe {
   cook_time: number;
   servings: number;
   calories: number;
-  difficulty: 'easy' | 'medium' | 'hard';
+  difficulty: string;
+  image_url?: string;
 }
 
 function RecipeDetailContent() {
@@ -36,6 +37,7 @@ function RecipeDetailContent() {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
 
+
   useEffect(() => {
     if (params.id && user) {
       fetchRecipe();
@@ -44,10 +46,12 @@ function RecipeDetailContent() {
 
   const fetchRecipe = async () => {
     try {
+      // params.id peut être un tableau ou une string
+      const recipeId = Array.isArray(params.id) ? params.id[0] : params.id;
       const { data, error } = await supabase
         .from('recipes')
         .select('*')
-        .eq('id', params.id)
+        .eq('id', recipeId)
         .eq('user_id', user?.id)
         .single();
 
@@ -55,7 +59,12 @@ function RecipeDetailContent() {
         console.error('Erreur lors du chargement de la recette:', error);
         setRecipe(null);
       } else {
-        setRecipe(data);
+        // On s'assure que le type correspond à Recipe
+        setRecipe({
+          ...data,
+          difficulty: ['easy', 'medium', 'hard'].includes(data?.difficulty) ? data.difficulty : 'medium',
+          image_url: typeof (data as any)?.image_url === 'string' ? (data as any).image_url : '',
+        });
       }
     } catch (error) {
       console.error('Erreur:', error);
@@ -64,7 +73,6 @@ function RecipeDetailContent() {
       setLoading(false);
     }
   };
-
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case 'easy':
@@ -119,7 +127,6 @@ function RecipeDetailContent() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
       <div className="max-w-4xl mx-auto px-6 py-8">
         <Button 
           variant="ghost" 
@@ -129,11 +136,15 @@ function RecipeDetailContent() {
           <ArrowLeft className="h-4 w-4" />
           <span>Retour</span>
         </Button>
-
         <div className="space-y-6">
           {/* En-tête de la recette */}
           <Card>
             <CardHeader>
+              {recipe.image_url ? (
+                <img src={recipe.image_url} alt={recipe.title} className="w-full h-64 object-cover rounded-t" />
+              ) : (
+                <div className="w-full h-64 bg-gray-200 flex items-center justify-center rounded-t text-gray-500">Aucune image</div>
+              )}
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <CardTitle className="text-3xl font-bold flex items-center space-x-3">
@@ -145,7 +156,6 @@ function RecipeDetailContent() {
                   </CardDescription>
                 </div>
               </div>
-              
               <div className="flex items-center space-x-6 mt-4">
                 <div className="flex items-center space-x-2">
                   <Clock className="h-5 w-5 text-muted-foreground" />
@@ -164,14 +174,12 @@ function RecipeDetailContent() {
                   <span className="text-sm">{recipe.servings} personnes</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  {/* <Users className="h-5 w-5 text-muted-foreground" /> */}
                   <span className="text-sm">{recipe.calories} kcal</span>
                 </div>
                 <Badge className={getDifficultyColor(recipe.difficulty)}>
                   {getDifficultyText(recipe.difficulty)}
                 </Badge>
               </div>
-
               {(recipe.dietary_restrictions.length > 0 || recipe.allergens.length > 0) && (
                 <div className="space-y-2 mt-4">
                   {recipe.dietary_restrictions.length > 0 && (
@@ -198,7 +206,6 @@ function RecipeDetailContent() {
               )}
             </CardHeader>
           </Card>
-
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Ingrédients */}
             <Card>
@@ -216,35 +223,33 @@ function RecipeDetailContent() {
                 </ul>
               </CardContent>
             </Card>
-
             {/* Instructions */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl">Instructions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="prose prose-sm max-w-none">
-                    {recipe.instructions
-                      .split(/\s*(?=\d+\.\s)/)
-                      .filter(step => step.trim() !== '')
-                      .map((step, index) => {
-                        const cleanedStep = step.replace(/^\d+\.\s*/, '');
-                        return (
-                          <div key={index} className="mb-4">
-                            <div className="flex items-start space-x-3">
-                              <span className="flex items-center justify-center w-6 h-6 bg-primary text-primary-foreground text-xs font-bold rounded-full flex-shrink-0 mt-0.5">
-                                {index + 1}
-                              </span>
-                              <p className="text-sm leading-relaxed">{cleanedStep}</p>
-                            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl">Instructions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="prose prose-sm max-w-none">
+                  {recipe.instructions
+                    .split(/\s*(?=\d+\.\s)/)
+                    .filter(step => step.trim() !== '')
+                    .map((step, index) => {
+                      const cleanedStep = step.replace(/^\d+\.\s*/, '');
+                      return (
+                        <div key={index} className="mb-4">
+                          <div className="flex items-start space-x-3">
+                            <span className="flex items-center justify-center w-6 h-6 bg-primary text-primary-foreground text-xs font-bold rounded-full flex-shrink-0 mt-0.5">
+                              {index + 1}
+                            </span>
+                            <p className="text-sm leading-relaxed">{cleanedStep}</p>
                           </div>
-                        );
-                      })}
-                  </div>
-                </CardContent>
-              </Card>
+                        </div>
+                      );
+                    })}
+                </div>
+              </CardContent>
+            </Card>
           </div>
-
           {/* Actions */}
           <Card>
             <CardContent className="pt-6">
@@ -263,6 +268,7 @@ function RecipeDetailContent() {
     </div>
   );
 }
+
 
 export default function RecipeDetail() {
   return (

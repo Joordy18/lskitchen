@@ -1,0 +1,4 @@
+-- Add credits and last_credit_reset to profiles table
+ALTER TABLE public.profiles
+ADD COLUMN credits INTEGER DEFAULT 10,
+ADD COLUMN last_credit_reset TIMESTAMPTZ DEFAULT now();

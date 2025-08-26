@@ -13,6 +13,63 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Function generate-recipes called');
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+    );
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('credits, last_credit_reset')
+      .eq('user_id', user.id)
+      .single();
+
+    console.log('Profile fetch result:', { profile, profileError });
+    if (profileError || !profile) {
+      throw new Error('Could not retrieve user profile');
+    }
+
+    const now = new Date();
+    const lastReset = new Date(profile.last_credit_reset);
+    const diff = now.getTime() - lastReset.getTime();
+    const hours = diff / (1000 * 60 * 60);
+
+    let credits = profile.credits;
+    if (hours >= 24) {
+      console.log('Resetting credits to 10');
+      credits = 10;
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ credits: 10, last_credit_reset: now.toISOString() })
+        .eq('user_id', user.id);
+      console.log('Credit reset result:', { updateError });
+      if (updateError) {
+        throw new Error('Failed to reset credits');
+      }
+    }
+
+    if (credits <= 0) {
+      console.log('No credits remaining, aborting');
+      return new Response(
+        JSON.stringify({ error: 'No credits remaining today' }),
+        {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
     if (!geminiApiKey) {
       throw new Error('GEMINI_API_KEY not configured');
@@ -54,6 +111,7 @@ serve(async (req) => {
     }
 
     
+
     const prompt = `Tu es un chef cuisinier expert. Génère exactement 3 recettes différentes basées sur ces critères :
 
 Ingrédients disponibles : ${ingredients.join(', ')}
@@ -73,7 +131,8 @@ Pour chaque recette, fournis EXACTEMENT le format JSON suivant (sans texte addit
       "cook_time": nombre_minutes_cuisson,
       "calories": nombre_calories,
       "servings": nombre_portions,
-      "difficulty": "easy" ou "medium" ou "hard"
+      "difficulty": "easy" ou "medium" ou "hard",
+      "image_url": "URL d'une image libre sur internet illustrant la recette (recherche par nom de recette)"
     }
   ]
 }
@@ -84,6 +143,7 @@ IMPORTANT :
 - Évite complètement les allergènes listés
 - Fournis des instructions détaillées et pratiques
 - Assure-toi que les temps sont réalistes
+- Pour chaque recette, recherche une image libre sur internet correspondant au nom de la recette et fournis son URL dans le champ image_url
 - Réponds UNIQUEMENT avec le JSON valide, rien d'autre`;
 
 
@@ -150,8 +210,46 @@ IMPORTANT :
       cook_time: Number(recipe.cook_time) || 30,
       servings: Number(recipe.servings) || 4,
       calories: Number(recipe.calories) || 500,
-      difficulty: ['easy', 'medium', 'hard'].includes(recipe.difficulty) ? recipe.difficulty : 'medium'
+      difficulty: ['easy', 'medium', 'hard'].includes(recipe.difficulty) ? recipe.difficulty : 'medium',
+      image_url: typeof recipe.image_url === 'string' ? recipe.image_url : ''
     }));
+
+    credits = credits - 1;
+    console.log('About to update credits, new value:', credits);
+    const { data: updateData, error: updateError } = await supabase
+      .from('profiles')
+      .update({ credits: credits })
+      .eq('user_id', user.id);
+
+    console.log('Update credits result:', { updateData, updateError });
+    if (updateError) {
+      console.error('Failed to update credits:', updateError.message);
+    }
+
+    for (const recipe of recipes) {
+      const { error: insertError } = await supabase
+        .from('recipes')
+        .insert({
+          id: recipe.id,
+          user_id: user.id,
+          title: recipe.title,
+          description: recipe.description,
+          ingredients: recipe.ingredients,
+          instructions: recipe.instructions,
+          dietary_restrictions: recipe.dietary_restrictions,
+          allergens: recipe.allergens,
+          prep_time: recipe.prep_time,
+          cook_time: recipe.cook_time,
+          servings: recipe.servings,
+          calories: recipe.calories,
+          difficulty: recipe.difficulty,
+          image_url: recipe.image_url,
+          created_at: new Date().toISOString()
+        });
+      if (insertError) {
+        console.error('Failed to insert recipe:', recipe.title, insertError.message);
+      }
+    }
 
     return new Response(
       JSON.stringify({ recipes }),

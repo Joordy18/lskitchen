@@ -19,6 +19,7 @@ interface Profile {
   email: string;
   bio: string;
   avatar_url: string;
+  credits: number;
 }
 
 interface Stats {
@@ -376,7 +377,7 @@ function ProfileContent() {
                     </Button>
                   </label>
                   <p className="text-xs text-muted-foreground">
-                    PNG, JPG jusqu'à 2MB
+                    PNG, JPG jusqu\'à 2MB
                   </p>
                 </div>
               </div>
@@ -408,6 +409,21 @@ function ProfileContent() {
 
           {/* Statistiques */}
           <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Crédits</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center p-4 bg-muted rounded-lg">
+                  <div className="text-2xl font-bold text-primary">
+                    {profile?.credits ?? 10}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Crédits restants
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader>
                 <CardTitle>Mes statistiques</CardTitle>
@@ -455,7 +471,7 @@ function ProfileContent() {
                     {stats.favoritesCuisines.map((cuisine, index) => (
                       <div
                         key={cuisine}
-                        className={`px-3 py-2 rounded-full text-sm font-medium ${
+                        className={`px-3 py-2 rounded-full text-sm font-medium ${ 
                           index === 0 
                             ? 'bg-primary text-primary-foreground' 
                             : index === 1 

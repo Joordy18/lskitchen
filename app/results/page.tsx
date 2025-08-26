@@ -25,7 +25,8 @@ interface Recipe {
   cook_time: number;
   servings: number;
   calories: number;
-  difficulty: 'easy' | 'medium' | 'hard';
+  difficulty: string;
+  image_url?: string;
 }
 
 // Rate limiter for recipe generation (max 3 requests per minute per user)
@@ -87,8 +88,12 @@ function ResultsContent() {
           variant: "destructive",
         });
       } else if (data?.recipes) {
-        setRecipes(data.recipes);
-        
+        // On s'assure que chaque recette a bien le champ image_url
+        setRecipes(data.recipes.map((r: any) => ({
+          ...r,
+          image_url: r.image_url || '',
+          difficulty: ['easy', 'medium', 'hard'].includes(r.difficulty) ? r.difficulty : 'medium',
+        })));
         // Save recipes to database
         await saveRecipesToDatabase(data.recipes);
       }
@@ -127,7 +132,8 @@ function ResultsContent() {
             servings: recipe.servings,
             difficulty: recipe.difficulty,
             created_at: new Date().toISOString(),
-            calories: recipe.calories
+            calories: recipe.calories,
+            image_url: recipe.image_url
           });
 
         if (error) {
