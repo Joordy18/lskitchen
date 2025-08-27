@@ -76,7 +76,98 @@ serve(async (req) => {
     }
 
     const requestData = await req.json();
-    
+
+    // Cas recommandation IA à partir d'une recette favorite
+    if (requestData.reference_recipe) {
+      const ref = requestData.reference_recipe;
+      const prompt = `Tu es un chef cuisinier expert. Propose une recette qui se marie parfaitement avec la recette suivante ou qui est très similaire : ${ref.title}.
+
+Voici la recette de référence :\n${ref.description}\n\nIngrédients : ${ref.ingredients?.join(', ') || ''}\n\nDonne une recette complète au format JSON suivant (sans texte additionnel) :
+{
+  "title": "nom de la recette",
+  "description": "description courte et appétissante",
+  "ingredients": ["ingrédient 1 avec quantité", "ingrédient 2 avec quantité", "etc"],
+  "instructions": "instructions détaillées étape par étape pour préparer la recette",
+  "prep_time": nombre_minutes_preparation,
+  "cook_time": nombre_minutes_cuisson,
+  "servings": nombre_portions,
+  "difficulty": "easy" ou "medium" ou "hard",
+  "calories": nombre_calories,
+  "image_url": "URL d'une image libre sur internet illustrant la recette (recherche par nom de recette)"
+}
+IMPORTANT :
+ - La recette doit être originale et complémentaire ou très proche de la recette de référence
+ - Utilise des ingrédients cohérents
+ - Fournis des instructions détaillées et pratiques
+ - Assure-toi que les temps sont réalistes
+ - Réponds UNIQUEMENT avec le JSON valide, rien d'autre
+ - Assure toi que chaque recette contient obligatoirement tous les champs demandés`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: prompt
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 2048,
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Gemini API request failed with status:', response.status);
+        throw new Error('External API service temporarily unavailable');
+      }
+
+      const data = await response.json();
+
+      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+        throw new Error('Invalid response from AI service');
+      }
+
+      const generatedText = data.candidates[0].content.parts[0].text;
+
+      let recipe;
+      try {
+        const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
+        const jsonText = jsonMatch ? jsonMatch[0] : generatedText;
+        recipe = JSON.parse(jsonText);
+      } catch (parseError) {
+        console.error('Failed to parse AI response');
+        throw new Error('Failed to parse recipe data from AI response');
+      }
+
+      credits = credits - 1;
+      const { data: updateData, error: updateError } = await supabase
+        .from('profiles')
+        .update({ credits: credits })
+        .eq('user_id', user.id);
+      if (updateError) {
+        console.error('Failed to update credits:', updateError.message);
+      }
+
+      return new Response(
+        JSON.stringify({ recipe }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // ...existing code for normal search prompt...
     const ingredients = Array.isArray(requestData.ingredients) 
       ? requestData.ingredients.filter(item => typeof item === 'string' && item.trim().length > 0).slice(0, 20)
       : [];
@@ -110,8 +201,6 @@ serve(async (req) => {
       );  
     }
 
-    
-
     const prompt = `Tu es un chef cuisinier expert. Génère exactement 3 recettes différentes basées sur ces critères :
 
 Ingrédients disponibles : ${ingredients.join(', ')}
@@ -132,6 +221,7 @@ Pour chaque recette, fournis EXACTEMENT le format JSON suivant (sans texte addit
       "servings": nombre_portions,
       "difficulty": "easy" ou "medium" ou "hard",
       "calories": nombre_calories,
+      "image_url": "URL d'une image libre sur internet illustrant la recette (recherche par nom de recette)"
     }
   ]
 }
@@ -144,11 +234,7 @@ IMPORTANT :
 - Assure-toi que les temps sont réalistes
 - Pour chaque recette, recherche une image libre sur internet correspondant au nom de la recette et fournis son URL dans le champ image_url
 - Réponds UNIQUEMENT avec le JSON valide, rien d'autre
-- Assure toi que chaque recette contient obligatoirement tous les champs demandés
-- Pour le champ image_url fournis une URL valide d'une image libre de droit trouvée sur internet`;
-
-// "image_url": "URL d'une image libre sur internet illustrant la recette (recherche par nom de recette)"
-
+- Assure toi que chaque recette contient obligatoirement tous les champs demandés`;
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
