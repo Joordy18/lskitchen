@@ -118,7 +118,7 @@ export default function Home() {
   );
 
 function RecommendationSection() {
-  const { user, isLoading } = useAuth();
+  const { user } = useAuth();
   const [favorites, setFavorites] = useState([]);
   const [recommended, setRecommended] = useState(null);
   const [iaRecipe, setIaRecipe] = useState(null);
@@ -237,7 +237,7 @@ IMPORTANT :
     return hash;
   }
 
-  if (isLoading || loading) {
+  if (loading) {
     return (
       <section className="py-12 px-6">
         <div className="max-w-4xl mx-auto text-center">

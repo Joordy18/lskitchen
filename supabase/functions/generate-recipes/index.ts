@@ -1,3 +1,4 @@
+// /// <reference lib="deno.ns" />
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.52.1';
@@ -145,7 +146,7 @@ IMPORTANT :
         const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
         const jsonText = jsonMatch ? jsonMatch[0] : generatedText;
         recipe = JSON.parse(jsonText);
-      } catch (parseError) {
+      } catch (_parseError) {
         console.error('Failed to parse AI response');
         throw new Error('Failed to parse recipe data from AI response');
       }
@@ -278,7 +279,7 @@ IMPORTANT :
       const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
       const jsonText = jsonMatch ? jsonMatch[0] : generatedText;
       parsedResponse = JSON.parse(jsonText);
-    } catch (parseError) {
+    } catch (_parseError) {
       console.error('Failed to parse AI response');
       throw new Error('Failed to parse recipe data from AI response');
     }
