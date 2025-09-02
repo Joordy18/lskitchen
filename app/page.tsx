@@ -130,7 +130,7 @@ function RecommendationSection() {
         setLoading(false);
         return;
       }
-      // Récupérer les recettes favorites de l'utilisateur depuis Supabase
+      
       const { supabase } = await import('@/integrations/supabase/client');
       const { data, error } = await (supabase
         .from('recipes')

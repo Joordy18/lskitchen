@@ -61,6 +61,8 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          image_url: string
+          is_favorite: boolean
         }
         Insert: {
           allergens?: string[] | null
@@ -78,6 +80,8 @@ export type Database = {
           title: string
           updated_at?: string
           user_id: string
+          image_url?: string
+          is_favorite?: boolean
         }
         Update: {
           allergens?: string[] | null
@@ -95,6 +99,8 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          image_url?: string
+          is_favorite?: boolean
         }
         Relationships: []
       }
